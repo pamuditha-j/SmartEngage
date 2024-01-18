@@ -25,7 +25,11 @@ for ttv in dataset:
                         clip = os.listdir('Dataset/'+ttv+'/'+user+'/'+extract+'/')[0]
                         print (clip[:-4])
                         source_path = os.path.abspath('.')+'/Dataset/'+ttv+'/'+user+'/'+extract+'/'
-                        destination_path = os.path.abspath('../DAiSEE/Dataset/' + ttv + '/Images')
+                        destination_path = os.path.abspath('../Dataset/Image_Dataset/' + ttv + '/' + user + '/' + extract + '/')
+
+                        if not os.path.exists(destination_path):
+                            os.makedirs(destination_path)
+
                         split_video(clip, clip[:-4], source_path, destination_path)
 print ("================================================================================\n")
 print ("Frame Extraction Successful")
