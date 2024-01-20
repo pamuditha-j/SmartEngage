@@ -1,6 +1,10 @@
 **/.DS_Store
 Dataset/Image_Dataset/
+Dataset/Labels/
+Dataset/Image_Dataset_2/
 EmotionPrediction/
+EmotionPredictionModel/tfrecords/
+.idea/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
