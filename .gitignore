@@ -1,3 +1,15 @@
+**/.DS_Store
+Dataset/Image_Dataset/
+Dataset/Labels/
+Dataset/Image_Dataset_2/
+Dataset/Image_Dataset_3/
+EmotionPrediction/
+EmotionPredictionModel/tfrecords/
+EmotionPredictionModel/Models/
+EmotionPredictionROI/Saved-Models/
+Prototype/Saved-Models
+.idea/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

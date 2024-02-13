@@ -1,2 +1,2 @@
 # SmartEngage
-Multi model student engagement recognition with XAI
+Multi model student engagement recognition with XAI.
