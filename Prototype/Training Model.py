@@ -19,12 +19,6 @@ kfold = KFold(n_splits=5, shuffle=True)
 # Define image data generators for training, testing, and validation
 train_datagen = ImageDataGenerator(
     rescale=1./255,
-    # rotation_range=20,
-    # horizontal_flip=True,
-    # width_shift_range=0.2,
-    # height_shift_range=0.2,
-    # shear_range=0.2,
-    # zoom_range=0.2
 )
 
 test_datagen = ImageDataGenerator(
@@ -60,15 +54,15 @@ def augment_image(image):
     # Transpose flip
     transposed = tf.image.transpose(image)
     # Saturation
-    saturated = tf.image.adjust_saturation(image, 3)
+    saturated = tf.image.adjust_saturation(flipped, 3)
     # Brightness
-    brightness = tf.image.adjust_brightness(image, 0.4)
+    brightness = tf.image.adjust_brightness(saturated, 0.4)
     # Contrast
-    contrast = tf.image.random_contrast(image, lower=0.0, upper=1.0)
+    contrast = tf.image.random_contrast(brightness, lower=0.0, upper=1.0)
 
     # Resize at the end
-    images = [flipped, transposed, saturated, brightness, contrast]
-    return images
+    # images = [flipped, transposed, saturated, brightness, contrast]
+    return contrast
 
 
 def plot_images(images, labels, title):
@@ -83,26 +77,27 @@ def plot_images(images, labels, title):
 
 
 def normalize_class_values(df):
-    # classes = ['Boredom', 'Engagement', 'Confusion', 'Frustration']
-    # max_possible_value = 3  # Adjust this based on the actual range of your labels
-    #
-    # def g(row):
-    #     for class_name in classes:
-    #         # Normalize and conditionally replace for each value in the row
-    #         row[class_name] = 1 if row[class_name] / max_possible_value > 0.5 else 0
-    #     return row
-    #
-    # # Apply the function to each row using apply or lambda
-    # df = df.apply(g, axis=1)  # Using 'axis=1' applies to each row
-    # # Or:
-    # # df = df.transform(lambda row: g(row), axis=1)
-    #
-    # return df
     classes = ['Boredom', 'Engagement', 'Confusion', 'Frustration']
-    max_possible_value = 3  # Adjust this based on the actual range of your labels
+    max_possible_value = 3
+
+    for index, row in df.iterrows():
+        if row['Boredom'] == 1:
+            df.at[index, 'Engagement'] = 2
+        elif row['Boredom'] > 1:
+            df.at[index, 'Engagement'] = 1
+
+        if row['Frustration'] == 1:
+            df.at[index, 'Frustration'] = 2
+        elif row['Frustration'] == 2:
+            df.at[index, 'Frustration'] = 3
+
+        if row['Confusion'] == 1:
+            df.at[index, 'Confusion'] = 2
+        elif row['Confusion'] == 2:
+            df.at[index, 'Confusion'] = 3
 
     for class_name in classes:
-        df[class_name] = df[class_name] / max_possible_value
+        df[class_name] = round(df[class_name] / max_possible_value, 1)  # Round to 1 decimal place
 
     return df
 
@@ -114,9 +109,9 @@ def generate_full_paths(row, dataset_dir):
     return full_paths
 
 
-def network():
+def model():
     model = tf.keras.Sequential()
-    model.add(kl.InputLayer(input_shape=(72, 288, 3)))
+    model.add(kl.InputLayer(input_shape=(80, 144, 3)))
     # First conv block
     model.add(kl.Conv2D(filters=128, kernel_size=3, padding='same', strides=2))
     model.add(tf.keras.layers.ReLU())
@@ -139,7 +134,7 @@ def network():
     # Second Fc
     model.add(kl.Dense(256))
     # Output FC with sigmoid at the end
-    model.add(kl.Dense(4, activation='sigmoid', name='prediction'))
+    model.add(kl.Dense(4, activation='softmax', name='prediction'))
     return model
 
 
@@ -154,10 +149,10 @@ def saveModelWeights(model, test_acc):
 
 
 # Construct paths for each dataset
-train_df['ClipID'] = train_df.apply(lambda row: generate_full_paths(row, '../Dataset/Image_Dataset_3/Train/face_mesh_rois'), axis=1)
-test_df['ClipID'] = test_df.apply(lambda row: generate_full_paths(row, '../Dataset/Image_Dataset_3/Test/face_mesh_rois'), axis=1)
+train_df['ClipID'] = train_df.apply(lambda row: generate_full_paths(row, '../Dataset/Image_Dataset_3/Train/face_mesh_rois_vertical'), axis=1)
+test_df['ClipID'] = test_df.apply(lambda row: generate_full_paths(row, '../Dataset/Image_Dataset_3/Test/face_mesh_rois_vertical'), axis=1)
 validation_df['ClipID'] = validation_df.apply(
-    lambda row: generate_full_paths(row, '../Dataset/Image_Dataset_3/Validation/face_mesh_rois'), axis=1)
+    lambda row: generate_full_paths(row, '../Dataset/Image_Dataset_3/Validation/face_mesh_rois_vertical'), axis=1)
 
 # Flatten the DataFrame to have one row per frame
 train_df = train_df.explode('ClipID').reset_index(drop=True)
@@ -167,6 +162,8 @@ validation_df = validation_df.explode('ClipID').reset_index(drop=True)
 train_df_normalized = normalize_class_values(train_df)
 test_df_normalized = normalize_class_values(test_df)
 validation_df_normalized = normalize_class_values(validation_df)
+
+# print(train_df_normalized['Engagement'].to_string(index=False))
 
 classes = ['Boredom', 'Engagement', 'Confusion', 'Frustration']
 
@@ -192,73 +189,73 @@ callbacks = [
 ]
 
 
-model = network()
+model = model()
 model.summary()
 # Compile the model
 model.compile(optimizer=Adam(learning_rate=0.0001, clipnorm=1.0), loss='binary_crossentropy', metrics=['accuracy'])
 
-# for fold, (train_idx, val_idx) in enumerate(kfold.split(train_df_normalized)):
-#     print(f"Training fold {fold + 1}")
-#
-#     train_fold = train_df_normalized.iloc[train_idx]
-#     val_fold = train_df_normalized.iloc[val_idx]
+for fold, (train_idx, val_idx) in enumerate(kfold.split(train_df_normalized)):
+    print(f"Training fold {fold + 1}")
 
-train_generator = train_datagen.flow_from_dataframe(
-    dataframe=train_df_normalized,
-    x_col='ClipID',
-    y_col=['Boredom', 'Engagement', 'Confusion', 'Frustration'],
-    target_size=(72, 288),
-    batch_size=64,
-    class_mode='raw',
-    shuffle=True,
-    preprocessing_function=augment_image
-)
+    train_fold = train_df_normalized.iloc[train_idx]
+    val_fold = train_df_normalized.iloc[val_idx]
 
-images, labels = next(train_generator)
-plot_images(images, labels, 'Train Images')
+    train_generator = train_datagen.flow_from_dataframe(
+        dataframe=train_fold,
+        x_col='ClipID',
+        y_col=['Boredom', 'Engagement', 'Confusion', 'Frustration'],
+        target_size=(80, 144),
+        batch_size=64,
+        class_mode='raw',
+        shuffle=True,
+        preprocessing_function=augment_image
+    )
 
-test_generator = test_datagen.flow_from_dataframe(
-    dataframe=test_df_normalized,
-    x_col='ClipID',
-    y_col=['Boredom', 'Engagement', 'Confusion', 'Frustration'],
-    target_size=(72, 288),
-    batch_size=64,
-    class_mode='raw',
-    shuffle=True,
-)
+    images, labels = next(train_generator)
+    plot_images(images, labels, 'Train Images')
 
-images, labels = next(test_generator)
-plot_images(images, labels, 'Test Images')
+    test_generator = test_datagen.flow_from_dataframe(
+        dataframe=test_df_normalized,
+        x_col='ClipID',
+        y_col=['Boredom', 'Engagement', 'Confusion', 'Frustration'],
+        target_size=(80, 144),
+        batch_size=64,
+        class_mode='raw',
+        shuffle=True,
+    )
 
-validation_generator = train_datagen.flow_from_dataframe(
-    dataframe=validation_df_normalized,
-    x_col='ClipID',
-    y_col=['Boredom', 'Engagement', 'Confusion', 'Frustration'],
-    target_size=(72, 288),
-    batch_size=64,
-    class_mode='raw',
-    shuffle=True,
-)
+    images, labels = next(test_generator)
+    plot_images(images, labels, 'Test Images')
 
-images, labels = next(validation_generator)
-plot_images(images, labels, 'Validation Images')
+    validation_generator = train_datagen.flow_from_dataframe(
+        dataframe=val_fold,
+        x_col='ClipID',
+        y_col=['Boredom', 'Engagement', 'Confusion', 'Frustration'],
+        target_size=(80, 144),
+        batch_size=64,
+        class_mode='raw',
+        shuffle=True,
+    )
 
-# Train the model
-history = model.fit(
-    train_generator,
-    epochs=50,
-    validation_data=validation_generator,
-    callbacks=callbacks
-)
+    images, labels = next(validation_generator)
+    plot_images(images, labels, 'Validation Images')
 
-# Evaluate the model on the test set
-test_images, test_labels = next(test_generator)
-test_predictions = model.predict(test_images)
-test_loss, test_acc = model.evaluate(test_images, test_labels)
+    # Train the model
+    history = model.fit(
+        train_generator,
+        epochs=50,
+        validation_data=validation_generator,
+        callbacks=callbacks
+    )
 
-print(f'Test accuracy: {test_acc}')
+    # Evaluate the model on the test set
+    test_images, test_labels = next(test_generator)
+    test_predictions = model.predict(test_images)
+    test_loss, test_acc = model.evaluate(test_images, test_labels)
 
-graphs(history)
+    print(f'Test accuracy: {test_acc}')
 
-saveModelWeights(model, test_acc)
+    graphs(history)
+
+    saveModelWeights(model, test_acc)
 
