@@ -8,6 +8,7 @@ EmotionPredictionModel/tfrecords/
 EmotionPredictionModel/Models/
 EmotionPredictionROI/Saved-Models/
 Prototype/Saved-Models
+Application/node_modules
 .idea/
 
 # Byte-compiled / optimized / DLL files
@@ -170,3 +171,26 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# dependencies
+Application/smart-engage/node_modules
+Application/smart-engage/.pnp
+Application/smart-engage/.pnp.js
+
+# testing
+Application/smart-engage/coverage
+
+# production
+Application/smart-engage/build
+
+# misc
+Application/smart-engage/.DS_Store
+Application/smart-engage/.env.local
+Application/smart-engage/.env.development.local
+Application/smart-engage/.env.test.local
+Application/smart-engage/.env.production.local
+
+Application/smart-engage/npm-debug.log*
+Application/smart-engage/yarn-debug.log*
+Application/smart-engage/yarn-error.log*
+
